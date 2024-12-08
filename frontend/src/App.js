@@ -16,11 +16,6 @@ const App = () => {
             axios.get("/xero").then((response)=>{
                 setBalanceSheetData(response.data);
               })
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch balance sheet");
-            // }
-            // const data = await response.json();
-            // setBalanceSheetData(data);
         } catch (err) {
             setError("Failed to fetch balance sheet. Please try again later.");
             console.error(err);
