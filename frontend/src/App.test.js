@@ -1,40 +1,54 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import App from './App';
-import { AuthContextProvider } from './contexts/AuthContext';
-import NavBar from './components/Navbar/Navbar';
-import { ToastContainer } from 'react-toastify';
-import '@testing-library/jest-dom';
 
-jest.mock('./components/Navbar/Navbar', () => () => <div>NavBar</div>); // Mock NavBar for testing
-jest.mock('react-toastify', () => ({
-  ToastContainer: () => <div>ToastContainer</div>,
-}));
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/extend-expect';
+import App from './App';
+import BalanceSheet from './components/BalanceSheet';
+import axios from './api/axios';
+
+jest.mock('./api/axios');
+jest.mock('./components/BalanceSheet', () => jest.fn(() => <div>BalanceSheet Component</div>));
 
 describe('App Component', () => {
-  it('should render the App component without crashing', () => {
-    render(<App />);
-    expect(screen.getByText('NavBar')).toBeInTheDocument();
-    expect(screen.getByText('ToastContainer')).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should render NavBar component', () => {
+  test('renders loading state initially', () => {
     render(<App />);
-    expect(screen.getByText('NavBar')).toBeInTheDocument();
+    expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
   });
 
-  it('should render ToastContainer with correct props', () => {
+  test('renders balance sheet data successfully', async () => {
+    const mockData = { someKey: 'someValue' };
+    axios.get.mockResolvedValueOnce({ data: mockData });
+    
     render(<App />);
-    // Check if ToastContainer is rendered with correct text content
-    const toastContainer = screen.getByText('ToastContainer');
-    expect(toastContainer).toBeInTheDocument();
-    // Here you can test if the ToastContainer is correctly rendered, 
-    // but testing internal props like autoClose, position, etc. could require more advanced mock setups.
+    
+    await waitFor(() => expect(BalanceSheet).toHaveBeenCalledWith({ data: mockData }, {}));
+    expect(screen.getByText('Balance Sheet')).toBeInTheDocument();
   });
 
-  it('should render children wrapped in AuthContextProvider', () => {
-    const { container } = render(<App />);
-    // Test that the AuthContextProvider is properly wrapping its children
-    expect(container.querySelector('div.App')).toBeInTheDocument();
+  test('renders error message on API failure', async () => {
+    axios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    render(<App />);
+ await screen.findByText(/Failed to fetch balance sheet. Please try again later./i);
+  });
+
+  test('does not render BalanceSheet component if API call fails', async () => {
+    axios.get.mockRejectedValueOnce(new Error('Network Error'));
+
+    render(<App />);
+ await waitFor(() => expect(screen.queryByText('BalanceSheet Component')).not.toBeInTheDocument());
+  });
+
+  test('handles empty data response gracefully', async () => {
+    const mockData = {};
+    axios.get.mockResolvedValueOnce({ data: mockData });
+
+    render(<App />);
+    
+    await waitFor(() => expect(BalanceSheet).toHaveBeenCalledWith({ data: mockData }, {}));
   });
 });

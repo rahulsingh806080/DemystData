@@ -1,45 +1,44 @@
-require("dotenv").config({
+require('dotenv').config({
   path: `./.env.${process.env.NODE_ENV}`,
 });
-// require("./config/db-connection");
 
-const express = require("express");
-const expressSession = require("express-session");
-const cors = require("cors");
-const passport = require("passport");
-const helmet = require("helmet");
+// Import dependencies
+const express = require('express');
+const passport = require('passport');
+const expressSession = require('express-session');
+const helmet = require('helmet');
+const cors = require('cors');
 
+//import helpers
 const { infoLogger } = require("./helpers/logger");
 const { rateLimiter } = require("./helpers/rate-limiter");
 
+// imports routes
+const xeroRoute = require('./routes/xero.js');
+
+
 const app = express();
 
+//middlewares
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(
-  expressSession({
-    secret: process.env.JWT_SECRET,
-    resave: true,
-    saveUninitialized: true,
-  })
-);
-app.use(passport.initialize());
-app.use(passport.session());
 app.use(infoLogger);
 app.use(rateLimiter);
 
-const xero_route = require("./routes/xero.js");
 
-app.use("/xero", xero_route);
 
-// default case for unmatched routes
-app.use(function (req, res) {
-  res.status(404);
+app.use("/xero", xeroRoute);
+
+
+// Error handling (404)
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
 });
 
-const port = process.env.SERVER_PORT;
+const port = process.env.SERVER_PORT || 5000;
 
+// start server
 app.listen(port, () => {
-  console.log(`\nServer Started on ${port}`);
+  console.log(`Server started on port ${port}`);
 });
